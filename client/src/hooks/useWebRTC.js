@@ -97,8 +97,22 @@ function useWebRTC(roomId, displayName) {
       }
 
       pc.ontrack = (event) => {
-        const [remoteStream] = event.streams;
-        if (!remoteStream) return;
+        let remoteStream = remoteStreamsRef.current.get(targetSocketId);
+
+        if (event.streams?.[0]) {
+          remoteStream = event.streams[0];
+        } else {
+          if (!remoteStream) {
+            remoteStream = new MediaStream();
+          }
+          const hasTrack = remoteStream
+            .getTracks()
+            .some((track) => track.id === event.track.id);
+          if (!hasTrack) {
+            remoteStream.addTrack(event.track);
+          }
+        }
+
         remoteStreamsRef.current.set(targetSocketId, remoteStream);
         syncRemoteStreams();
       };
@@ -108,7 +122,7 @@ function useWebRTC(roomId, displayName) {
         socketRef.current.emit("ice-candidate", {
           roomId,
           target: targetSocketId,
-          candidate: event.candidate,
+          candidate: event.candidate.toJSON(),
         });
       };
 
@@ -288,7 +302,7 @@ function useWebRTC(roomId, displayName) {
       }
 
       const socket = io(SOCKET_URL, {
-        transports: ["websocket"],
+        transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionAttempts: 10,
       });

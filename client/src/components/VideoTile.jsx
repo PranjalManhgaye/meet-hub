@@ -4,8 +4,17 @@ function VideoTile({ stream, label, muted = false, isVideoOff = false }) {
   const videoRef = useRef(null);
 
   useEffect(() => {
-    if (!videoRef.current) return;
-    videoRef.current.srcObject = stream || null;
+    const video = videoRef.current;
+    if (!video) return;
+    video.srcObject = stream || null;
+    if (!stream) return;
+
+    const playPromise = video.play();
+    if (playPromise) {
+      playPromise.catch(() => {
+        // Mobile browsers may block autoplay until user interaction.
+      });
+    }
   }, [stream]);
 
   return (
