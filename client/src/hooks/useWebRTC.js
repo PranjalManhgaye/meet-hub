@@ -97,22 +97,17 @@ function useWebRTC(roomId, displayName) {
       }
 
       pc.ontrack = (event) => {
-        let remoteStream = remoteStreamsRef.current.get(targetSocketId);
+        const existing = remoteStreamsRef.current.get(targetSocketId);
+        const tracksById = new Map();
 
+        existing?.getTracks().forEach((track) => tracksById.set(track.id, track));
         if (event.streams?.[0]) {
-          remoteStream = event.streams[0];
-        } else {
-          if (!remoteStream) {
-            remoteStream = new MediaStream();
-          }
-          const hasTrack = remoteStream
-            .getTracks()
-            .some((track) => track.id === event.track.id);
-          if (!hasTrack) {
-            remoteStream.addTrack(event.track);
-          }
+          event.streams[0].getTracks().forEach((track) => tracksById.set(track.id, track));
+        } else if (event.track) {
+          tracksById.set(event.track.id, event.track);
         }
 
+        const remoteStream = new MediaStream(Array.from(tracksById.values()));
         remoteStreamsRef.current.set(targetSocketId, remoteStream);
         syncRemoteStreams();
       };
@@ -144,7 +139,7 @@ function useWebRTC(roomId, displayName) {
       };
 
       pc.onconnectionstatechange = () => {
-        if (["failed", "closed", "disconnected"].includes(pc.connectionState)) {
+        if (pc.connectionState === "failed" || pc.connectionState === "closed") {
           const leftName = peerNamesRef.current[targetSocketId] || "A participant";
           setNotice(`${leftName} disconnected.`);
           removePeer(targetSocketId);
@@ -251,8 +246,13 @@ function useWebRTC(roomId, displayName) {
   }, [setPeerNamesState, syncRemoteStreams]);
 
   useEffect(() => {
-    mountedRef.current = true;
     if (!roomId) return () => {};
+
+    const sessionId = Symbol("webrtc-session");
+    let activeSession = sessionId;
+    mountedRef.current = true;
+
+    const isActive = () => activeSession === sessionId && mountedRef.current;
 
     const setup = async () => {
       setError("");
@@ -289,15 +289,22 @@ function useWebRTC(roomId, displayName) {
           audio: true,
           video: true,
         });
-        if (!mountedRef.current) {
+        if (!isActive()) {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
         localStreamRef.current = stream;
         setLocalStream(stream);
       } catch {
+        if (!isActive()) return;
         setError("Camera or microphone permission is required to join.");
         setCallState("failed");
+        return;
+      }
+
+      if (!isActive()) {
+        localStreamRef.current?.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = null;
         return;
       }
 
@@ -449,6 +456,7 @@ function useWebRTC(roomId, displayName) {
     setup();
 
     return () => {
+      activeSession = Symbol("webrtc-session-ended");
       mountedRef.current = false;
       leaveRoom();
     };
