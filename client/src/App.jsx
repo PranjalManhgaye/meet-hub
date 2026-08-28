@@ -29,23 +29,40 @@ function App() {
   return (
     <main className="join-page">
       <section className="join-card">
-        <h1>Zoom MVP</h1>
-        <p>Join a room to start a video call.</p>
+        <div className="join-brand">
+          <div className="join-logo" aria-hidden="true">
+            MH
+          </div>
+          <div>
+            <h1>Meet Hub</h1>
+            <p>HD video meetings for your team</p>
+          </div>
+        </div>
         <form onSubmit={handleJoin} className="join-form">
-          <input
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            placeholder="Your name (optional)"
-            aria-label="Display name"
-          />
-          <input
-            value={roomInput}
-            onChange={(e) => setRoomInput(e.target.value)}
-            placeholder="Enter room ID"
-            aria-label="Room ID"
-          />
-          <button type="submit">Join Room</button>
+          <label className="field">
+            <span>Your name</span>
+            <input
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder="e.g. Alex"
+              aria-label="Display name"
+            />
+          </label>
+          <label className="field">
+            <span>Meeting ID</span>
+            <input
+              value={roomInput}
+              onChange={(e) => setRoomInput(e.target.value)}
+              placeholder="Enter room ID"
+              aria-label="Room ID"
+              required
+            />
+          </label>
+          <button type="submit" className="btn-primary btn-join">
+            Join meeting
+          </button>
         </form>
+        <p className="join-hint">Share the meeting ID with others to invite them.</p>
       </section>
     </main>
   );
